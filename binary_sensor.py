@@ -4,6 +4,7 @@ from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySen
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import slugify
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -20,7 +21,8 @@ class StatusDegradedBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     def __init__(self, coordinator, entry: ConfigEntry):
         super().__init__(coordinator)
-        self._attr_name = "Status Degraded"
+        entry_slug = slugify(entry.title)
+        self._attr_name = f"{entry.title} Degraded"
         self._attr_unique_id = f"{entry.entry_id}_degraded"
 
     @property
