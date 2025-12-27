@@ -1,0 +1,9 @@
+{
+  "domain": "status_monitor",
+  "name": "Status Monitor",
+  "version": "0.1.0",
+  "requirements": ["jmespath==1.0.1"],
+  "codeowners": ["@you"],
+  "config_flow": true,
+  "iot_class": "cloud_polling"
+}

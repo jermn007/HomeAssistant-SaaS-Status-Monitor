@@ -1,0 +1,264 @@
+blueprint:
+  name: Service status voice + light alerts
+  description: "React to degraded/normal status with optional light changes and voice actions (TTS or sounds)."
+  domain: automation
+  input:
+    target_entities:
+      name: Status entities
+      description: "Choose one or more Status Degraded or Status Overall entities."
+      selector:
+        entity:
+          domain:
+            - binary_sensor
+            - sensor
+          multiple: true
+    alert_on_any_change:
+      name: Alert on any component change
+      description: "Run actions when any selected entity enters a degraded or recovered state."
+      default: false
+      selector:
+        boolean: {}
+    enable_lights:
+      name: Enable light alerts
+      default: false
+      selector:
+        boolean: {}
+    light_targets:
+      name: Light entities (for snapshot/restore)
+      description: "Optional. Used only for snapshot/restore."
+      default: []
+      selector:
+        entity:
+          domain: light
+          multiple: true
+    light_snapshot_on_degrade:
+      name: Snapshot lights on degradation
+      default: true
+      selector:
+        boolean: {}
+    palette_entity_degraded:
+      name: Palette select entity (degraded)
+      description: "Optional. Select entity for WLED palette (or any select-based palette)."
+      default: ""
+      selector:
+        entity:
+          domain: select
+    palette_entity:
+      name: Palette select entity (both)
+      description: "Optional. Use the same palette select entity for degraded and recovered."
+      default: ""
+      selector:
+        entity:
+          domain: select
+    palette_option_degraded:
+      name: Palette option (degraded)
+      description: "Exact option name to set on the palette select entity."
+      default: ""
+      selector:
+        text: {}
+    palette_entity_recovered:
+      name: Palette select entity (recovered)
+      description: "Optional. Select entity for WLED palette (or any select-based palette)."
+      default: ""
+      selector:
+        entity:
+          domain: select
+    palette_option_recovered:
+      name: Palette option (recovered)
+      description: "Exact option name to set on the palette select entity."
+      default: ""
+      selector:
+        text: {}
+    light_actions_degraded:
+      name: Light actions on degradation
+      description: "Add light.turn_on or other actions. Leave empty to skip."
+      default: []
+      selector:
+        action: {}
+    light_actions_recovered:
+      name: Light actions on recovery
+      description: "Leave empty to skip."
+      default: []
+      selector:
+        action: {}
+    enable_voice:
+      name: Enable voice alerts
+      default: false
+      selector:
+        boolean: {}
+    voice_actions_degraded:
+      name: Voice actions on degradation
+      description: "Add TTS or play_media actions. Leave empty to skip."
+      default: []
+      selector:
+        action: {}
+    voice_actions_recovered:
+      name: Voice actions on recovery
+      description: "Leave empty to skip."
+      default: []
+      selector:
+        action: {}
+  source_url: https://example.com/status_monitor/blueprints/notify_on_degrade
+
+mode: single
+trigger:
+  - platform: state
+    entity_id: !input target_entities
+
+variables:
+  target_entities: !input target_entities
+  alert_on_any_change: !input alert_on_any_change
+  enable_lights: !input enable_lights
+  enable_voice: !input enable_voice
+  light_targets: !input light_targets
+  light_snapshot_on_degrade: !input light_snapshot_on_degrade
+  palette_entity_degraded: !input palette_entity_degraded
+  palette_entity: !input palette_entity
+  palette_option_degraded: !input palette_option_degraded
+  palette_entity_recovered: !input palette_entity_recovered
+  palette_option_recovered: !input palette_option_recovered
+  palette_entity_degraded_resolved: >-
+    {{ palette_entity_degraded if (palette_entity_degraded | default('')) | length > 0 else palette_entity }}
+  palette_entity_recovered_resolved: >-
+    {{ palette_entity_recovered if (palette_entity_recovered | default('')) | length > 0 else palette_entity }}
+  light_snapshot_scene: "{{ this.entity_id | replace('automation.', 'status_monitor_') | replace('.', '_') }}"
+  degraded_states:
+    - "on"
+    - "degraded"
+    - "degraded_performance"
+    - "partial_outage"
+    - "major_outage"
+    - "maintenance"
+    - "under_maintenance"
+    - "unknown"
+    - "unavailable"
+  recovered_states:
+    - "off"
+    - "operational"
+    - "none"
+  current_any_degraded: >-
+    {% set ns = namespace(any=false) %}
+    {% for s in expand(target_entities) %}
+      {% if s.state in degraded_states %}
+        {% set ns.any = true %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.any }}
+  current_all_recovered: >-
+    {% set ns = namespace(all=true) %}
+    {% for s in expand(target_entities) %}
+      {% if s.state not in recovered_states %}
+        {% set ns.all = false %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.all }}
+  prev_any_degraded: >-
+    {% set ns = namespace(any=false) %}
+    {% for s in expand(target_entities) %}
+      {% if s.entity_id == trigger.entity_id %}
+        {% set state = trigger.from_state.state if trigger.from_state is not none else s.state %}
+      {% else %}
+        {% set state = s.state %}
+      {% endif %}
+      {% if state in degraded_states %}
+        {% set ns.any = true %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.any }}
+  prev_all_recovered: >-
+    {% set ns = namespace(all=true) %}
+    {% for s in expand(target_entities) %}
+      {% if s.entity_id == trigger.entity_id %}
+        {% set state = trigger.from_state.state if trigger.from_state is not none else s.state %}
+      {% else %}
+        {% set state = s.state %}
+      {% endif %}
+      {% if state not in recovered_states %}
+        {% set ns.all = false %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.all }}
+
+action:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ (current_any_degraded and not prev_any_degraded)
+                 or (alert_on_any_change
+                     and trigger.from_state is not none
+                     and trigger.to_state is not none
+                     and trigger.to_state.state in degraded_states) }}
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ enable_lights and light_snapshot_on_degrade and (light_targets | length > 0) }}"
+                sequence:
+                  - service: scene.create
+                    data:
+                      scene_id: "{{ light_snapshot_scene }}"
+                      snapshot_entities: !input light_targets
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ enable_lights
+                         and (palette_entity_degraded_resolved | default('')) | length > 0
+                         and (palette_option_degraded | default('')) | length > 0 }}
+                sequence:
+                  - service: select.select_option
+                    target:
+                      entity_id: "{{ palette_entity_degraded_resolved }}"
+                    data:
+                      option: "{{ palette_option_degraded }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ enable_lights }}"
+                sequence: !input light_actions_degraded
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ enable_voice }}"
+                sequence: !input voice_actions_degraded
+      - conditions:
+          - condition: template
+            value_template: >-
+              {{ (current_all_recovered and not prev_all_recovered)
+                 or (alert_on_any_change
+                     and trigger.from_state is not none
+                     and trigger.to_state is not none
+                     and trigger.to_state.state in recovered_states) }}
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ enable_lights and light_snapshot_on_degrade and (light_targets | length > 0) }}"
+                sequence:
+                  - service: scene.turn_on
+                    data:
+                      entity_id: "{{ 'scene.' ~ light_snapshot_scene }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ enable_lights
+                         and (palette_entity_recovered_resolved | default('')) | length > 0
+                         and (palette_option_recovered | default('')) | length > 0 }}
+                sequence:
+                  - service: select.select_option
+                    target:
+                      entity_id: "{{ palette_entity_recovered_resolved }}"
+                    data:
+                      option: "{{ palette_option_recovered }}"
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ enable_lights }}"
+                sequence: !input light_actions_recovered
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ enable_voice }}"
+                sequence: !input voice_actions_recovered
