@@ -1,9 +1,10 @@
 {
   "domain": "status_monitor",
-  "name": "Status Monitor",
-  "version": "0.1.0",
+  "name": "SaaS Status Monitor",
+  "version": "0.5.0",
   "requirements": ["jmespath==1.0.1"],
-  "codeowners": ["@you"],
+  "codeowners": ["@jermn007"],
   "config_flow": true,
-  "iot_class": "cloud_polling"
+  "iot_class": "cloud_polling",
+  "documentation": "https://github.com/jermn007/HomeSaaSistant-Status-Monitor-"
 }
