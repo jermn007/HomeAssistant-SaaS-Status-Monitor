@@ -22,7 +22,7 @@ SaaS Status Monitor is a custom Home Assistant integration that polls SaaS statu
 - Optional status map (JSON) to normalize values.
 
 ## Entities
-- `sensor.status_overall` - normalized overall status.
+- `sensor.<platform>_status_overall` - normalized overall status.
 - `sensor.status_<component>` - status per component (if components are available).
 - `binary_sensor.<entry_name>_degraded` - on when overall status is degraded/partial/major/maintenance/unknown.
 
