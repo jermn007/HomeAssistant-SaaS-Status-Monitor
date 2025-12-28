@@ -188,7 +188,8 @@ action:
                  or (alert_on_any_change
                      and trigger.from_state is not none
                      and trigger.to_state is not none
-                     and trigger.to_state.state in degraded_states) }}
+                     and trigger.to_state.state in degraded_states
+                     and trigger.from_state.state not in degraded_states) }}
         sequence:
           - choose:
               - conditions:
@@ -229,7 +230,8 @@ action:
                  or (alert_on_any_change
                      and trigger.from_state is not none
                      and trigger.to_state is not none
-                     and trigger.to_state.state in recovered_states) }}
+                     and trigger.to_state.state in recovered_states
+                     and trigger.from_state.state not in recovered_states) }}
         sequence:
           - choose:
               - conditions:
