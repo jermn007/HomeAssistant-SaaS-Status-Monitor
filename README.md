@@ -29,7 +29,7 @@ SaaS Status Monitor is a custom Home Assistant integration that polls SaaS statu
 Attributes include `last_refresh`, `last_update_success`, and `last_update_success_time`.
 
 ## Blueprint
-The repo includes `blueprint/notify_on_degrade.yaml` for light/voice alerts. Import it into HA (Settings > Automations & Scenes > Blueprints) or copy it into `/config/blueprints/automation/`.
+The repo includes `blueprint/notify_on_degrade.yaml` for light/voice alerts. Import it into HA (Settings > Automations & Scenes > Blueprints) or copy it into `/config/blueprints/automation/Custom`.
 
 ## Troubleshooting
 - Enable debug logging for `custom_components.status_monitor` to see polling logs
