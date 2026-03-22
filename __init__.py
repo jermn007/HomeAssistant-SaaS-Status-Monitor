@@ -7,6 +7,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -25,7 +26,7 @@ PLATFORMS = ["sensor", "binary_sensor"]
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    provider = get_provider(entry.data[CONF_PROVIDER], entry.data, hass.helpers.aiohttp_client.async_get_clientsession(hass))
+    provider = get_provider(entry.data[CONF_PROVIDER], entry.data, async_get_clientsession(hass))
     coordinator = StatusCoordinator(
         hass,
         provider=provider,
